@@ -4,19 +4,19 @@ import CouponBox from "./CouponBox";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { CalendarDays, MapPin, Shield, CreditCard, Loader2 } from "lucide-react";
+import { CalendarDays, MapPin, Shield, CreditCard, Loader2, Package } from "lucide-react";
 import { useState } from "react";
 
 const BookingSummary = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const {
-    selectedDate, selectedSlots, includeInsurance, setIncludeInsurance,
+    selectedDate, selectedServices, includeInsurance, setIncludeInsurance,
     termsAccepted, setTermsAccepted, getBasePrice, getConvenienceFee,
     getInsuranceFee, getDiscountAmount, getTotalAmount, setPaymentStatus, setBookingId,
   } = useBooking();
 
-  const canPay = selectedSlots.length > 0 && termsAccepted;
+  const canPay = selectedServices.length > 0 && termsAccepted;
 
   const handlePayment = () => {
     if (!canPay) return;
@@ -65,16 +65,16 @@ const BookingSummary = () => {
           </div>
         </div>
 
-        {/* Selected Slots */}
-        {selectedSlots.length > 0 ? (
+        {/* Selected Services */}
+        {selectedServices.length > 0 ? (
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              {selectedSlots.length} Slot{selectedSlots.length > 1 ? "s" : ""} Selected
+              {selectedServices.length} Service{selectedServices.length > 1 ? "s" : ""} Selected
             </p>
             <div className="space-y-1.5 max-h-32 overflow-y-auto">
-              {selectedSlots.map((s) => (
+              {selectedServices.map((s) => (
                 <div key={s.id} className="flex justify-between items-center text-xs py-2 px-3 rounded-lg bg-secondary/60">
-                  <span className="text-foreground font-medium">{s.time}</span>
+                  <span className="text-foreground font-medium">{s.name}</span>
                   <span className="font-semibold text-foreground">₹{s.price}</span>
                 </div>
               ))}
@@ -82,13 +82,14 @@ const BookingSummary = () => {
           </div>
         ) : (
           <div className="text-center py-6 text-muted-foreground text-xs">
-            <p>No slots selected yet</p>
-            <p className="mt-1 text-[10px]">Select a date & pick your slots</p>
+            <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No services selected yet</p>
+            <p className="mt-1 text-[10px]">Select a date & pick your services</p>
           </div>
         )}
 
         {/* Price Breakdown */}
-        {selectedSlots.length > 0 && (
+        {selectedServices.length > 0 && (
           <div className="border-t pt-3 space-y-2.5">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Base Price</span>

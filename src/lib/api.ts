@@ -32,5 +32,27 @@ api.interceptors.response.use(
   }
 );
 
+import { Service } from '../types/booking';
+
+export const getServices = async (bookingDate: string): Promise<Service[]> => {
+  const response = await api.post('/booking/booked-slots', { bookingDate });
+  const { booked, available: availSlots } = response.data.data as { booked: {startTime: string; endTime: string}[], available: {startTime: string; endTime: string}[] };
+  
+  // Create unique slots combining booked + available
+  const allStartTimes = new Set([...booked.map(s => s.startTime), ...availSlots.map(s => s.startTime)]);
+  
+  const services: Service[] = Array.from(allStartTimes).map(startTime => {
+    const slot = [...booked, ...availSlots].find(s => s.startTime === startTime)!;
+    return {
+      id: `slot-${startTime}`,
+      name: `${startTime}-${slot.endTime} Cricket Slot`,
+      price: 500,
+      available: availSlots.some(s => s.startTime === startTime)
+    };
+  });
+  
+  return services;
+};
+
 export default api;
 

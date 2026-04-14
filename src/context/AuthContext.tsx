@@ -40,8 +40,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (token && userStr) {
           const user = JSON.parse(userStr);
-          // Basic validation: ensure user is object with required shape
-          if (user && typeof user === 'object' && typeof user.id === 'number' && user.email && user.role) {
+          // Full User shape validation using type guard
+          const isValidUser = (obj: Record<string, unknown>): obj is User =>
+            obj && typeof obj === 'object' &&
+            typeof obj.id === 'number' &&
+            typeof obj.email === 'string' &&
+            typeof obj.name === 'string' &&
+            typeof obj.phoneNumber === 'string' &&
+            typeof obj.role === 'string';
+          if (isValidUser(user)) {
             setState({
               user,
               token,
@@ -68,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth();
   }, []);
 
-  const saveToStorage = (responseData: any) => {
+  const saveToStorage = (responseData: unknown): void => {
     const response: AuthResponse = {
       statusCode: responseData.statusCode || 200,
       message: responseData.message || 'success',

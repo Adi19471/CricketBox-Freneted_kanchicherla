@@ -1,29 +1,34 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import SlotCard from "@/components/SlotCard";
 import BookingSummary from "@/components/BookingSummary";
 import { useBooking } from "@/context/BookingContext";
-import { generateSlots } from "@/utils/mockData";
+import { Service } from "@/types/booking";
+
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarDays, Sun, Cloud, Moon, ChevronUp, CreditCard, Loader2 } from "lucide-react";
+import { CalendarDays, ChevronUp, CreditCard, Loader2, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const BookingPage = () => {
-  const { selectedDate, setSelectedDate } = useBooking();
-  const slots = useMemo(() => generateSlots(selectedDate), [selectedDate]);
-  const morningSlots = slots.filter((s) => s.period === "morning");
-  const afternoonSlots = slots.filter((s) => s.period === "afternoon");
-  const eveningSlots = slots.filter((s) => s.period === "evening");
+  const { selectedDate, setSelectedDate, services, loadingServices, fetchServices } = useBooking();
+  const availableServices = useMemo(() => 
+    Array.isArray(services) 
+      ? services.filter((s: Service) => s.available)
+      : [], 
+    [services]
+  );
+
+  useEffect(() => {
+    fetchServices(selectedDate);
+  }, [selectedDate, fetchServices]); 
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  const availableCount = slots.filter(s => s.available).length;
+  const availableCount = availableServices.length;
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
@@ -33,16 +38,16 @@ const BookingPage = () => {
       <div className="bg-gradient-hero text-primary-foreground py-8 md:py-12">
         <div className="container mx-auto px-4">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <p className="text-xs font-bold uppercase tracking-wider opacity-70 mb-1">📅 Slot Booking</p>
-            <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">Book Your Slot</h1>
-            <p className="opacity-70 text-sm">Select a date, pick your preferred time slots, and you're good to go!</p>
+            <p className="text-xs font-bold uppercase tracking-wider opacity-70 mb-1">🛠️ Service Booking</p>
+            <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">Book Services</h1>
+            <p className="opacity-70 text-sm">Select a date to view available services</p>
           </motion.div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left — Calendar + Slots */}
+          {/* Left — Calendar + Services */}
           <div className="lg:col-span-2 space-y-6">
             {/* Calendar Card */}
             <motion.div
@@ -71,15 +76,22 @@ const BookingPage = () => {
                     📅 {format(selectedDate, "EEEE, dd MMMM yyyy")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {availableCount} slots available
+                    {availableCount} services available
                   </p>
                 </motion.div>
               )}
             </motion.div>
 
-            {/* Slots */}
+            {loadingServices && (
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading services...</span>
+              </div>
+            )} 
+
+            {/* Services */}
             <AnimatePresence mode="wait">
-              {selectedDate && (
+              {selectedDate && !loadingServices && (
                 <motion.div
                   key={selectedDate.toISOString()}
                   initial={{ opacity: 0, y: 20 }}
@@ -87,32 +99,7 @@ const BookingPage = () => {
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-6"
                 >
-                  {/* Morning */}
-                  <SlotSection
-                    icon={<Sun className="w-5 h-5 text-accent" />}
-                    title="Morning Slots"
-                    subtitle="6:00 AM – 12:00 PM"
-                    price="₹200/hr"
-                    slots={morningSlots}
-                  />
-
-                  {/* Afternoon */}
-                  <SlotSection
-                    icon={<Cloud className="w-5 h-5 text-primary" />}
-                    title="Afternoon Slots"
-                    subtitle="12:00 PM – 5:30 PM"
-                    price="₹225/hr"
-                    slots={afternoonSlots}
-                  />
-
-                  {/* Evening */}
-                  <SlotSection
-                    icon={<Moon className="w-5 h-5 text-sport-blue" />}
-                    title="Evening Slots"
-                    subtitle="5:30 PM – 11:30 PM"
-                    price="₹250/hr"
-                    slots={eveningSlots}
-                  />
+                  <ServiceSection services={services} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -125,7 +112,7 @@ const BookingPage = () => {
               >
                 <div className="text-5xl mb-4 animate-float">📅</div>
                 <h3 className="font-display font-bold text-lg text-foreground mb-2">Select a Date</h3>
-                <p className="text-sm text-muted-foreground">Choose a date from the calendar above to view available slots</p>
+                <p className="text-sm text-muted-foreground">Choose a date from the calendar to view available services</p>
               </motion.div>
             )}
           </div>
@@ -149,50 +136,96 @@ const BookingPage = () => {
   );
 };
 
-interface SlotSectionProps {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  price: string;
-  slots: ReturnType<typeof generateSlots>;
+interface ServiceSectionProps {
+  services: Service[];
 }
 
-const SlotSection = ({ icon, title, subtitle, price, slots }: SlotSectionProps) => {
-  const availableCount = slots.filter(s => s.available).length;
+const ServiceSection = ({ services }: ServiceSectionProps) => {
+  const availableCount = services.filter(s => s.available).length;
   
   return (
     <div className="bg-card rounded-2xl border p-6 card-elevated">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
-            {icon}
+          <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center">
+            <Package className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h3 className="font-display font-bold text-foreground">{title}</h3>
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <h3 className="font-display font-bold text-xl text-foreground">Available Services</h3>
+            <p className="text-sm text-muted-foreground">{availableCount} available</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="font-display font-bold text-primary text-sm">{price}</p>
-          <p className="text-[10px] text-muted-foreground">{availableCount}/{slots.length} available</p>
+      </div>
+      {services.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Package className="w-16 h-16 mx-auto mb-4 opacity-40" />
+          <p className="text-lg font-medium mb-1">No services available</p>
+          <p className="text-sm">No services for the selected date</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {services.map((service) => (
+            <ServiceCard key={service.id} service={service} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface ServiceCardProps {
+  service: Service;
+}
+
+const ServiceCard = ({ service }: ServiceCardProps) => {
+  const { toggleService, selectedServices } = useBooking();
+  const isSelected = selectedServices.some((s) => s.id === service.id);
+
+  return (
+    <motion.button
+      whileHover={service.available ? { scale: 1.02 } : {}}
+      whileTap={service.available ? { scale: 0.98 } : {}}
+      disabled={!service.available}
+      onClick={() => service.available && toggleService(service)}
+      className={`
+        p-5 rounded-xl border-2 text-left transition-all duration-200 group
+        ${!service.available
+          ? "opacity-50 cursor-not-allowed border-border bg-muted"
+          : isSelected
+            ? "border-primary bg-primary/5 ring-2 ring-primary/30 shadow-lg"
+            : "border-border hover:border-primary/50 hover:shadow-md bg-card group-hover:bg-secondary/30"
+        }
+      `}
+    >
+      {isSelected && (
+        <div className="absolute inset-0 bg-primary/5 rounded-xl -m-1" />
+      )}
+      <div className="relative z-10 flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <h4 className="font-semibold text-foreground text-base mb-1">{service.name}</h4>
+          <p className="text-2xl font-display font-bold text-primary">₹{service.price}</p>
+        </div>
+        <div className="flex-shrink-0 ml-2">
+          {!service.available ? (
+            <span className="px-3 py-1 rounded-full bg-destructive/10 text-destructive text-xs font-medium">Unavailable</span>
+          ) : isSelected ? (
+            <span className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold">Selected</span>
+          ) : (
+            <span className="px-3 py-1 rounded-full bg-success/10 text-success text-xs font-medium">Available</span>
+          )}
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {slots.map((slot) => (
-          <SlotCard key={slot.id} slot={slot} />
-        ))}
-      </div>
-    </div>
+    </motion.button>
   );
 };
 
 const MobileSummaryBar = () => {
   const navigate = useNavigate();
-  const { selectedSlots, getTotalAmount, termsAccepted, setTermsAccepted, setPaymentStatus, setBookingId } = useBooking();
+  const { selectedServices, getTotalAmount, termsAccepted, setTermsAccepted, setPaymentStatus, setBookingId } = useBooking();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const canPay = selectedSlots.length > 0 && termsAccepted;
+  const canPay = selectedServices.length > 0 && termsAccepted;
 
   const handlePayment = () => {
     if (!canPay) return;
@@ -222,12 +255,12 @@ const MobileSummaryBar = () => {
         </motion.div>
       )}
       <div className="px-4 py-3 flex items-center justify-between">
-        {selectedSlots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Select slots to continue</p>
+        {selectedServices.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Select services to continue</p>
         ) : (
           <>
             <div>
-              <p className="text-xs text-muted-foreground">{selectedSlots.length} slot(s) selected</p>
+              <p className="text-xs text-muted-foreground">{selectedServices.length} service(s) selected</p>
               <p className="font-display font-bold text-xl text-foreground">₹{getTotalAmount()}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -269,3 +302,4 @@ const MobileSummaryBar = () => {
 };
 
 export default BookingPage;
+
