@@ -34,20 +34,32 @@ api.interceptors.response.use(
 
 import { Service } from '../types/booking';
 
+interface BackendSlot {
+  session?: 'MORNING' | 'AFTERNOON';
+  price?: number;
+  startTime: string;
+  endTime: string;
+}
+
 export const getServices = async (bookingDate: string): Promise<Service[]> => {
   const response = await api.post('/booking/booked-slots', { bookingDate });
-  const { booked, available: availSlots } = response.data.data as { booked: {startTime: string; endTime: string}[], available: {startTime: string; endTime: string}[] };
+  const { booked, available: availSlots } = response.data.data as { 
+    booked: BackendSlot[], 
+    available: BackendSlot[] 
+  };
   
-  // Create unique slots combining booked + available
+  // Create unique slots
   const allStartTimes = new Set([...booked.map(s => s.startTime), ...availSlots.map(s => s.startTime)]);
   
   const services: Service[] = Array.from(allStartTimes).map(startTime => {
-    const slot = [...booked, ...availSlots].find(s => s.startTime === startTime)!;
+    const availableSlot = availSlots.find(s => s.startTime === startTime);
+    const anySlot = availableSlot || [...booked, ...availSlots].find(s => s.startTime === startTime)!;
+    
     return {
       id: `slot-${startTime}`,
-      name: `${startTime}-${slot.endTime} Cricket Slot`,
-      price: 500,
-      available: availSlots.some(s => s.startTime === startTime)
+      name: `${startTime}-${anySlot.endTime} (${availableSlot?.session || 'General'}) Cricket Slot`,
+      price: availableSlot?.price || 30,  // fallback if no backend price
+      available: !!availableSlot
     };
   });
   

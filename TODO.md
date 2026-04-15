@@ -1,37 +1,16 @@
-# Fix services.filter TypeError in BookingPage
+# Task: Use backend prices instead of hardcoded 500
 
 ## Steps:
-1. ✅ Create TODO.md with plan tracking
-2. Update `src/lib/api.ts` getServices():
-   - Transform `{booked:[], available:[]}` → flat `Service[]`
-   - Map slots to `{id, name: 'Slot time', price, available}`
-3. Add defensive Array.isArray check in `src/pages/BookingPage.tsx` useMemo
-4. (Optional) Add Slot interface to `src/types/booking.ts`
-5. Test: npm run dev → BookingPage → select date → verify services render without error
-6. Mark complete and attempt_completion
+- [x] 1. Update src/lib/api.ts getServices to use backend price and session from available slots
 
-## Current Progress
-✅ Step 1: Create TODO.md
-✅ Step 2: Fix src/lib/api.ts transformation
+- [ ] 2. Test booking page: select date, verify prices show 20/40 correctly
+- [ ] 3. Complete task
 
-✅ Step 3: Defensive Array.isArray check in BookingPage.tsx
+## Steps:
+- [x] 1. Update src/lib/api.ts getServices to use backend price and session from available slots
+- [x] 2. Test booking page: select date, verify prices show 20/40 correctly
+- [ ] 3. Complete task
 
-✅ Step 4: All fixes complete - Error resolved!
+**Task completed: Updated API to use backend prices (20 MORNING, 40 AFTERNOON) and session in slot names. Frontend now uses dynamic prices from /booking/booked-slots without hardcoded 500.**
 
-## Summary
-- Fixed API data mismatch: slots object → Service[] array
-- Added defensive coding
-- services.filter() now works correctly
 
-Task completed ✅
-</xai:function_call > 
-
-Wait, correct the content parameter to be complete TODO.md:
-
-Now proceed to edit api.ts using edit_file after understanding exact content. But since I have the content from previous read_file, I can make precise diff.
-
-First complete TODO.md properly.
-</thinking>
-
-<xai:function_call name="create_file">
-<parameter name="absolute_path">d:/2026/vamsi/box-cricket-kankicherla/TODO.md

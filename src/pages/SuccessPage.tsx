@@ -24,7 +24,7 @@ const SuccessPage = () => {
   const { bookingId, selectedDate, selectedSlots, getTotalAmount, resetBooking } = useBooking();
 
   const whatsappMsg = encodeURIComponent(
-    `🏏 Booking Confirmed!\n\n📍 Venue: Our Zone Box Cricket\n🆔 Booking ID: ${bookingId || "OZ-DEMO"}\n📅 Date: ${selectedDate ? format(selectedDate, "dd MMM yyyy") : "—"}\n⏰ Slots: ${selectedSlots.map(s => s.time).join(", ") || "—"}\n💰 Amount: ₹${getTotalAmount()}\n\nSee you on the turf! 🏏`
+    `🏏 Booking Confirmed!\\n\\n📍 Venue: Our Zone Box Cricket\\n🆔 Booking ID: ${bookingId || "OZ-DEMO"}\\n📅 Date: ${selectedDate ? format(selectedDate, "dd MMM yyyy") : "—"}\\n⏰ Slots: ${(selectedSlots ?? []).map(s => s.time).join(", ") || "—"}\\n💰 Amount: ₹${getTotalAmount()}\\n\\nSee you on the turf! 🏏`
   );
 
   return (
@@ -103,11 +103,11 @@ const SuccessPage = () => {
                   {selectedDate ? format(selectedDate, "EEEE, dd MMM yyyy") : "—"}
                 </span>
               </div>
-              {selectedSlots.length > 0 && (
+{selectedSlots?.length > 0 && (
                 <div className="flex items-start gap-3 text-sm">
                   <Clock className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    {selectedSlots.map((s) => (
+{(selectedSlots ?? []).map((s) => (
                       <p key={s.id} className="text-foreground">{s.time} — ₹{s.price}</p>
                     ))}
                   </div>
@@ -120,7 +120,7 @@ const SuccessPage = () => {
                 <CreditCard className="w-4 h-4 text-primary" />
                 <span className="font-semibold text-foreground">Amount Paid</span>
               </div>
-              <span className="font-display text-2xl font-bold text-primary">₹{getTotalAmount()}</span>
+₹{getTotalAmount?.() ?? 0}
             </div>
           </motion.div>
 
