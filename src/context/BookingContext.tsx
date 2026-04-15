@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from "react";
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-import { getServices } from "../lib/api";
-import type { Service } from "../types/booking";
+import { getServices, createBooking, createPaymentLink } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
+import type { Service, BookingPayload, BookingResponse, PaymentResponse } from "../types/booking";
+
 
 interface BookingState {
   selectedDate: Date | undefined;
@@ -15,9 +17,11 @@ interface BookingState {
   discount: number;
   includeInsurance: boolean;
   termsAccepted: boolean;
+  phoneInput: string;
   paymentStatus: "idle" | "processing" | "success" | "failed";
   bookingId: string;
 }
+
 
 interface BookingContextType extends BookingState {
   setSelectedDate: (date: Date | undefined) => void;
@@ -29,7 +33,11 @@ interface BookingContextType extends BookingState {
   removeCoupon: () => void;
   setIncludeInsurance: (v: boolean) => void;
   setTermsAccepted: (v: boolean) => void;
+  setPhoneInput: React.Dispatch<React.SetStateAction<string>>;
+  createBookingFn: () => Promise<void>;
+  paymentStatus: BookingState["paymentStatus"];
   setPaymentStatus: (s: BookingState["paymentStatus"]) => void;
+  bookingId: string;
   setBookingId: (id: string) => void;
   getBasePrice: () => number;
   getConvenienceFee: () => number;
@@ -39,9 +47,12 @@ interface BookingContextType extends BookingState {
   resetBooking: () => void;
 }
 
+
+
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export const BookingProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
@@ -51,8 +62,85 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
   const [discount, setDiscount] = useState(0);
   const [includeInsurance, setIncludeInsurance] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [phoneInput, setPhoneInput] = useState(user?.phoneNumber || "");
   const [paymentStatus, setPaymentStatus] = useState<BookingState["paymentStatus"]>("idle");
   const [bookingId, setBookingId] = useState(""); 
+
+  const parseAmPmTo24 = (timeStr: string): string => {
+    const [time, period] = timeStr.toLowerCase().split(' ');
+    const [hoursRaw, minutesRaw] = time.split(':').map(Number);
+    let hours = hoursRaw;
+    let minutes = minutesRaw;
+    if (period === 'pm' && hours !== 12) hours += 12;
+    if (period === 'am' && hours === 12) hours = 0;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+  };
+
+  const createBookingFn = useCallback(async () => {
+    if (!selectedDate) {
+      toast.error('Please select a date');
+      return;
+    }
+    if (selectedServices.length === 0) {
+      toast.error('Please select slots');
+      return;
+    }
+    if (!phoneInput.match(/^\d{10}$/)) {
+      toast.error('Please enter valid 10-digit phone');
+      return;
+    }
+    if (!termsAccepted) {
+      toast.error('Please accept terms');
+      return;
+    }
+
+    try {
+      setPaymentStatus('processing');
+      toast.loading('Creating booking...', { id: 'booking' });
+
+      // Sort selected services by startTime
+      const sortedServices = [...selectedServices].sort((a, b) => a.startTime!.localeCompare(b.startTime!));
+
+      // Check consecutive
+      for (let i = 0; i < sortedServices.length - 1; i++) {
+        const currentEnd24 = parseAmPmTo24(sortedServices[i].endTime!);
+        const nextStart24 = parseAmPmTo24(sortedServices[i+1].startTime!);
+        if (currentEnd24 !== nextStart24) {
+          toast.error('Slots must be consecutive');
+          setPaymentStatus('idle');
+          return;
+        }
+      }
+
+      const bookingDate = format(selectedDate, 'yyyy-MM-dd');
+      const startTime = parseAmPmTo24(sortedServices[0].startTime!);
+      const endTime = parseAmPmTo24(sortedServices[sortedServices.length - 1].endTime!);
+      const number = sortedServices.length;
+
+      const payload: BookingPayload = { bookingDate, startTime, endTime, number };
+
+      const bookingRes = await createBooking(payload);
+      const paymentRes = await createPaymentLink(bookingRes.bookingId);
+
+      toast.dismiss('booking');
+      toast.success(`Booking ${bookingRes.bookingId} created! Opening payment...`);
+      setBookingId(bookingRes.bookingId.toString());
+      setPaymentStatus('success');
+      window.open(paymentRes.data.paymentLink, '_blank');
+    } catch (error: unknown) {
+      console.error('Booking failed:', error);
+
+      toast.dismiss('booking');
+      const err = error as any;
+      toast.error(err?.response?.data?.message || 'Booking failed');
+
+
+      setPaymentStatus('failed');
+    }
+  }, [selectedDate, selectedServices, phoneInput, termsAccepted]);
+
+
 
   const fetchServices = useCallback(async (date: Date | undefined) => {
     if (!date) {
@@ -129,6 +217,8 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
         applyCoupon, removeCoupon,
         includeInsurance, setIncludeInsurance,
         termsAccepted, setTermsAccepted,
+        phoneInput, setPhoneInput,
+        createBookingFn,
         paymentStatus, setPaymentStatus,
         bookingId, setBookingId,
         getBasePrice, getConvenienceFee, getInsuranceFee, getDiscountAmount, getTotalAmount,
@@ -138,6 +228,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </BookingContext.Provider>
   );
+
 };
 
 export const useBooking = () => {

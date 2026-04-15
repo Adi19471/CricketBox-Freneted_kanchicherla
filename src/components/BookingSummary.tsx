@@ -12,32 +12,21 @@ const BookingSummary = () => {
   const [loading, setLoading] = useState(false);
   const {
     selectedDate, selectedServices, includeInsurance, setIncludeInsurance,
-    termsAccepted, setTermsAccepted, getBasePrice, getConvenienceFee,
-    getInsuranceFee, getDiscountAmount, getTotalAmount, setPaymentStatus, setBookingId,
+    termsAccepted, setTermsAccepted, phoneInput, setPhoneInput,
+    getBasePrice, getConvenienceFee,
+    getInsuranceFee, getDiscountAmount, getTotalAmount, createBookingFn,
   } = useBooking();
+
 
   const canPay = selectedServices.length > 0 && termsAccepted;
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (!canPay) return;
     setLoading(true);
-    setPaymentStatus("processing");
-    toast.loading("Initiating Razorpay payment...", { id: "payment" });
-
-    // Simulate Razorpay payment
-    setTimeout(() => {
-      toast.loading("Processing payment...", { id: "payment" });
-      setTimeout(() => {
-        toast.dismiss("payment");
-        const id = "OZ" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
-        setBookingId(id);
-        setPaymentStatus("success");
-        setLoading(false);
-        toast.success("Payment successful! 🎉");
-        navigate("/success");
-      }, 1500);
-    }, 1000);
+    await createBookingFn();
+    setLoading(false);
   };
+
 
   return (
     <motion.div
@@ -65,22 +54,36 @@ const BookingSummary = () => {
           </div>
         </div>
 
+        {/* Phone Input */}
+        <div className="border-t pt-3">
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Phone Number</label>
+          <input
+            type="tel"
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, ''))}
+            placeholder="Enter 10-digit phone"
+            maxLength={10}
+            className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-ring transition-all"
+          />
+        </div>
+
         {/* Selected Services */}
         {selectedServices.length > 0 ? (
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              {selectedServices.length} Service{selectedServices.length > 1 ? "s" : ""} Selected
+              {selectedServices.length} Slot{selectedServices.length > 1 ? "s" : ""} Selected
             </p>
             <div className="space-y-1.5 max-h-32 overflow-y-auto">
               {selectedServices.map((s) => (
                 <div key={s.id} className="flex justify-between items-center text-xs py-2 px-3 rounded-lg bg-secondary/60">
-                  <span className="text-foreground font-medium">{s.name}</span>
+                  <span className="text-foreground font-medium truncate max-w-[120px]">{s.name}</span>
                   <span className="font-semibold text-foreground">₹{s.price}</span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
+
           <div className="text-center py-6 text-muted-foreground text-xs">
             <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <p>No services selected yet</p>

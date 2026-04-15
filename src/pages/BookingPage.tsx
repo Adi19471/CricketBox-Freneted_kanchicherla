@@ -221,27 +221,19 @@ const ServiceCard = ({ service }: ServiceCardProps) => {
 
 const MobileSummaryBar = () => {
   const navigate = useNavigate();
-  const { selectedServices, getTotalAmount, termsAccepted, setTermsAccepted, setPaymentStatus, setBookingId } = useBooking();
+  const { selectedServices, getTotalAmount, termsAccepted, setTermsAccepted, phoneInput, setPhoneInput, createBookingFn } = useBooking();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const canPay = selectedServices.length > 0 && termsAccepted;
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (!canPay) return;
     setLoading(true);
-    setPaymentStatus("processing");
-    toast.loading("Processing payment...", { id: "payment" });
-    setTimeout(() => {
-      toast.dismiss("payment");
-      const id = "OZ" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
-      setBookingId(id);
-      setPaymentStatus("success");
-      setLoading(false);
-      toast.success("Payment successful! 🎉");
-      navigate("/success");
-    }, 2000);
+    await createBookingFn();
+    setLoading(false);
   };
+
 
   return (
     <div className="bg-card border-t shadow-lg">

@@ -55,16 +55,33 @@ export const getServices = async (bookingDate: string): Promise<Service[]> => {
     const availableSlot = availSlots.find(s => s.startTime === startTime);
     const anySlot = availableSlot || [...booked, ...availSlots].find(s => s.startTime === startTime)!;
     
-    return {
+    const service = {
       id: `slot-${startTime}`,
       name: `${startTime}-${anySlot.endTime} (${availableSlot?.session || 'General'}) Cricket Slot`,
-      price: availableSlot?.price || 30,  // fallback if no backend price
-      available: !!availableSlot
+      price: availableSlot?.price || 30,
+      available: !!availableSlot,
+      startTime,
+      endTime: anySlot.endTime
     };
+
+    return service;
   });
   
   return services;
 };
+
+import type { BookingPayload, BookingResponse, PaymentResponse } from '../types/booking';
+
+export const createBooking = async (payload: BookingPayload): Promise<BookingResponse> => {
+  const response = await api.post('/booking/create', payload);
+  return response.data;
+};
+
+export const createPaymentLink = async (bookingId: number): Promise<PaymentResponse> => {
+  const response = await api.post(`/payment/create-payment-link/${bookingId}`);
+  return response.data;
+};
+
 
 export default api;
 
