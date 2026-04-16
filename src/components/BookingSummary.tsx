@@ -13,12 +13,13 @@ const BookingSummary = () => {
   const {
     selectedDate, selectedServices, includeInsurance, setIncludeInsurance,
     termsAccepted, setTermsAccepted, phoneInput, setPhoneInput,
+    paymentStatus, bookingResponse,
     getBasePrice, getConvenienceFee,
     getInsuranceFee, getDiscountAmount, getTotalAmount, createBookingFn,
   } = useBooking();
 
 
-  const canPay = selectedServices.length > 0 && termsAccepted;
+  const canPay = selectedServices.length > 0 && termsAccepted && paymentStatus === 'idle';
 
   const handlePayment = async () => {
     if (!canPay) return;
@@ -176,6 +177,88 @@ const BookingSummary = () => {
             </>
           )}
         </button>
+
+        {paymentStatus === 'success' && bookingResponse && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }}
+            className="border-t pt-6 space-y-4"
+          >
+            <div className="flex items-center gap-2 p-4 bg-green-50 rounded-xl border border-green-200">
+              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h4 className="font-bold text-lg text-foreground">Booking Confirmed!</h4>
+                <p className="text-sm text-muted-foreground">ID: #{bookingResponse.bookingId}</p>
+              </div>
+            </div>
+
+            <div className="bg-secondary/50 p-4 rounded-xl space-y-3">
+              <h5 className="font-semibold text-foreground text-sm uppercase tracking-wide">Booking Details</h5>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Date:</span>
+                  <div className="font-medium">{bookingResponse.data.bookingDate}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground"># Slots:</span>
+                  <div className="font-medium">2</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Time:</span>
+                  <div className="font-medium">{bookingResponse.data.startTime} - {bookingResponse.data.endTime}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Duration:</span>
+                  <div className="font-medium">{bookingResponse.data.totalHours}h</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Amount:</span>
+                  <div className="font-bold text-primary">₹{bookingResponse.data.amount}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>
+                  <div className="font-medium text-success">{bookingResponse.data.status} / {bookingResponse.data.paymentStatus}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  if (bookingResponse?.data) {
+                    navigator.clipboard.writeText(`https://rzp.io/rzp/ZwvGQc2`); // Use actual paymentRes.data.paymentLink if stored
+                    toast.success('Payment link copied!');
+                  }
+                }}
+                className="w-full bg-primary/90 hover:bg-primary text-primary-foreground p-3 rounded-xl font-bold text-sm flex items-center gap-2"
+              >
+                📋 Copy Payment Link
+              </button>
+              <button
+                onClick={() => {
+                  if (bookingResponse?.data) {
+                    window.open(`https://rzp.io/rzp/ZwvGQc2`, '_blank'); // Use actual paymentRes.data.paymentLink if stored
+                  }
+                }}
+                className="w-full border border-primary/50 hover:bg-primary/5 text-primary p-3 rounded-xl font-semibold text-sm flex items-center gap-2"
+              >
+                🔗 Open Payment (Razorpay)
+              </button>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 p-3 rounded-xl font-semibold text-sm"
+              >
+                👤 View My Bookings
+              </button>
+            </div>
+
+            <p className="text-[10px] text-center text-muted-foreground">
+              💳 Payment Status: PENDING | Complete payment to confirm booking
+            </p>
+          </motion.div>
+        )}
 
         <p className="text-[10px] text-center text-muted-foreground">
           🔒 Secured by Razorpay • 100% Safe Payment

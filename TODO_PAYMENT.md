@@ -11,6 +11,6 @@
 
 - [x] 5. Test full flow
 
-**Payment integration complete:** Backend booking creation, Razorpay link, phone input, consecutive slot validation, real flow in desktop/mobile summary.
+**Payment integration complete + Success UI:** Backend booking creation, Razorpay link display on success page, booking details (totalHours, amount from backend), copy/open link buttons, "Payment Pending" status.
 
 

@@ -22,6 +22,7 @@ interface BookingState {
   phoneInput: string;
   paymentStatus: "idle" | "processing" | "success" | "failed";
   bookingId: string;
+  bookingResponse?: BookingResponse | null;
 }
 
 
@@ -42,6 +43,7 @@ interface BookingContextType extends BookingState {
   setPaymentStatus: (s: BookingState["paymentStatus"]) => void;
   bookingId: string;
   setBookingId: (id: string) => void;
+  bookingResponse: BookingState["bookingResponse"];
   getBasePrice: () => number;
   getConvenienceFee: () => number;
   getInsuranceFee: () => number;
@@ -69,6 +71,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
   const [phoneInput, setPhoneInput] = useState(user?.phoneNumber || "");
   const [paymentStatus, setPaymentStatus] = useState<BookingState["paymentStatus"]>("idle");
   const [bookingId, setBookingId] = useState(""); 
+  const [bookingResponse, setBookingResponse] = useState<BookingResponse | null>(null); 
 
   const parseAmPmTo24 = (timeStr: string): string => {
     const [time, period] = timeStr.toLowerCase().split(' ');
@@ -127,8 +130,9 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
       const bookingRes = await createBooking(payload);
       const paymentRes = await createPaymentLink(bookingRes.bookingId);
 
+      setBookingResponse(bookingRes);
       toast.dismiss('booking');
-      toast.success(`Booking ${bookingRes.bookingId} created! Opening payment...`);
+      toast.success(`Booking ${bookingRes.bookingId} created! Payment link ready.`);
       setBookingId(bookingRes.bookingId.toString());
       setPaymentStatus('success');
       window.open(paymentRes.data.paymentLink, '_blank');
@@ -230,6 +234,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
     setTermsAccepted(false);
     setPaymentStatus("idle");
     setBookingId("");
+    setBookingResponse(null);
   };
 
   return (
@@ -246,6 +251,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
         createBookingFn,
         paymentStatus, setPaymentStatus,
         bookingId, setBookingId,
+        bookingResponse,
         getBasePrice, getConvenienceFee, getInsuranceFee, getDiscountAmount, getTotalAmount,
         resetBooking,
         isAuthenticated,
