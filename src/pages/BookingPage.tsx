@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -9,12 +10,13 @@ import { Service } from "@/types/booking";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarDays, ChevronUp, CreditCard, Loader2, Package } from "lucide-react";
+import { CalendarDays, ChevronUp, CreditCard, Loader2, Lock, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const BookingPage = () => {
-  const { selectedDate, setSelectedDate, services, loadingServices, fetchServices } = useBooking();
+  const { selectedDate, setSelectedDate, services, loadingServices, fetchServices, isAuthenticated: bookingAuth } = useBooking();
+  const { isAuthenticated: authChecked } = useAuth();
   const availableServices = useMemo(() => 
     Array.isArray(services) 
       ? services.filter((s: Service) => s.available)
@@ -23,12 +25,52 @@ const BookingPage = () => {
   );
 
   useEffect(() => {
-    fetchServices(selectedDate);
-  }, [selectedDate, fetchServices]); 
+    if (selectedDate && bookingAuth) {
+      fetchServices(selectedDate);
+    }
+  }, [selectedDate, fetchServices, bookingAuth]); 
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const availableCount = availableServices.length;
+
+  if (!authChecked || !bookingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-8">
+        <Navbar />
+        <div className="max-w-md w-full space-y-6 text-center">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }} 
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-2xl border p-12 card-elevated"
+          >
+            <div className="w-24 h-24 mx-auto mb-8 bg-primary/10 rounded-3xl flex items-center justify-center">
+              <Lock className="w-12 h-12 text-primary" />
+            </div>
+            <h2 className="font-display text-2xl font-bold text-foreground mb-4">Login Required</h2>
+            <p className="text-muted-foreground mb-8">
+              Please log in to your account to book cricket slots and view availability.
+            </p>
+            <div className="space-y-3">
+              <a 
+                href="/login"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-6 rounded-xl block transition-all shadow-lg hover:shadow-xl"
+              >
+                Login to Book
+              </a>
+              <a 
+                href="/register" 
+                className="w-full border border-primary/50 text-primary hover:bg-primary/5 font-medium py-4 px-6 rounded-xl block transition-all"
+              >
+                Create Account
+              </a>
+            </div>
+          </motion.div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
@@ -63,8 +105,8 @@ const BookingPage = () => {
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
-                disabled={(date) => date < today}
-                className={cn("p-3 pointer-events-auto mx-auto")}
+                disabled={(date) => date < today || !bookingAuth}
+                className={cn("p-3 pointer-events-auto mx-auto", !bookingAuth && "opacity-50 cursor-not-allowed")}
               />
               {selectedDate && (
                 <motion.div

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import api from '@/lib/api';
+import { isTokenExpired } from '../lib/authUtils';
 import type { AuthResponse, RegisterPayload, LoginPayload, User } from '@/types/auth';
 
 interface AuthState {
@@ -37,8 +38,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userStr = localStorage.getItem('user');
         const role = localStorage.getItem('role') || null;
         const bookingConfirmationCode = localStorage.getItem('bookingConfirmationCode') || null;
+        const tokenExpiry = localStorage.getItem('tokenExpiry') || null;
 
-        if (token && userStr) {
+        if (token && userStr && tokenExpiry) {
+          if (isTokenExpired(tokenExpiry)) {
+            console.warn('Token expired on init, clearing auth');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('role');
+            localStorage.removeItem('tokenExpiry');
+            localStorage.removeItem('bookingConfirmationCode');
+            setState({ user: null, token: null, role: null, bookingConfirmationCode: null, loading: false });
+            return;
+          }
+          
           const user = JSON.parse(userStr);
           // Full User shape validation using type guard
           const isValidUser = (obj: Record<string, unknown>): obj is User =>
@@ -68,6 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('user');
         localStorage.removeItem('role');
         localStorage.removeItem('bookingConfirmationCode');
+        localStorage.removeItem('tokenExpiry');
       } finally {
         setState(prev => ({ ...prev, loading: false }));
       }
@@ -90,7 +104,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('token', response.token);
     localStorage.setItem('user', JSON.stringify(response.user));
     localStorage.setItem('role', response.role);
+    localStorage.setItem('tokenExpiry', response.expirationTime);
     localStorage.setItem('bookingConfirmationCode', response.bookingConfirmationCode);
+    
+    // Check if token already expired
+    if (isTokenExpired(response.expirationTime)) {
+      console.warn('New token expired immediately, clearing');
+      logout();
+      return;
+    }
+    
     setState({
       user: response.user,
       token: response.token,
@@ -132,6 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('role');
+    localStorage.removeItem('tokenExpiry');
     localStorage.removeItem('bookingConfirmationCode');
     setState({
       user: null,

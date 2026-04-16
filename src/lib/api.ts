@@ -11,6 +11,7 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    console.log('Interceptor token:', token ? 'present' : 'missing', 'for', config.url); // Debug
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,13 +24,21 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    console.error('API Error:', status, error.response?.data?.message || error.message, 'URL:', error.config?.url);
+    
+    if (status === 401 || status === 403) {
+      console.warn('Auth error (401/403), clearing token and redirecting to login');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('role');
+      localStorage.removeItem('tokenExpiry');
+      localStorage.removeItem('bookingConfirmationCode');
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
+
 );
 
 import { Service } from '../types/booking';

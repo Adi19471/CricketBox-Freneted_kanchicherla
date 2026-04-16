@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
 import { getServices, createBooking, createPaymentLink } from "../lib/api";
-import { useAuth } from "../context/AuthContext";
+import { isTokenExpired } from "../lib/authUtils";
 import type { Service, BookingPayload, BookingResponse, PaymentResponse } from "../types/booking";
 
 
@@ -24,6 +26,7 @@ interface BookingState {
 
 
 interface BookingContextType extends BookingState {
+  isAuthenticated: boolean;
   setSelectedDate: (date: Date | undefined) => void;
   setServices: (services: Service[]) => void;
   setLoadingServices: (loading: boolean) => void;
@@ -52,7 +55,8 @@ interface BookingContextType extends BookingState {
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export const BookingProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
+  const { user, token, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
@@ -132,7 +136,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
       console.error('Booking failed:', error);
 
       toast.dismiss('booking');
-      const err = error as any;
+      const err: any = error;
       toast.error(err?.response?.data?.message || 'Booking failed');
 
 
@@ -149,19 +153,40 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    if (!isAuthenticated || !user || !token) {
+      toast.error("Please login to view available slots");
+      navigate("/login");
+      return;
+    }
+
+    // Additional token expiry check (redundant protection)
+    const tokenExpiry = localStorage.getItem('tokenExpiry');
+    if (tokenExpiry && isTokenExpired(tokenExpiry)) {
+      console.warn('Token expired before API call, redirecting');
+      navigate("/login");
+      return;
+    }
+
     try {
       setLoadingServices(true);
       const formattedDate = format(date, 'yyyy-MM-dd');
+      console.log('Token before getServices:', token ? 'present' : 'missing'); // Debug token
       const availableServices = await getServices(formattedDate);
       setServices(availableServices);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch services:', error);
-      toast.error('Failed to load services');
+      if (error.response?.status === 403) {
+        toast.error('Session expired or insufficient permissions. Please login again.');
+        navigate("/login");
+      } else {
+        toast.error('Failed to load services. Please try again.');
+      }
       setServices([]);
     } finally {
       setLoadingServices(false);
     }
-  }, []);
+  }, [isAuthenticated, user, token, navigate]);
+
 
   const toggleService = (service: Service) => {
     setSelectedServices((prev) => {
@@ -223,6 +248,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
         bookingId, setBookingId,
         getBasePrice, getConvenienceFee, getInsuranceFee, getDiscountAmount, getTotalAmount,
         resetBooking,
+        isAuthenticated,
       }}
     >
       {children}
