@@ -12,6 +12,7 @@ export interface BookingPayload {
   startTime: string; // 'HH:mm:ss'
   endTime: string;
   number: number;
+  amount: number;
 }
 
 export interface BookingData {

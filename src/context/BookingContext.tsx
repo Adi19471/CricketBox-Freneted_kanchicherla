@@ -125,7 +125,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
       const endTime = parseAmPmTo24(sortedServices[sortedServices.length - 1].endTime!);
       const number = sortedServices.length;
 
-      const payload: BookingPayload = { bookingDate, startTime, endTime, number };
+const payload: BookingPayload = { bookingDate, startTime, endTime, number, amount: getTotalAmount() };
 
       const bookingRes = await createBooking(payload);
       const paymentRes = await createPaymentLink(bookingRes.bookingId);
